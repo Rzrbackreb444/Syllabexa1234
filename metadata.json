@@ -1,0 +1,7 @@
+{
+  "name": "Syllabexa",
+  "description": "Enterprise AI publishing platform and ghostwriting suite. Features multi-model AI generation, voice training & ElevenLabs cloning, Atticus & Vellum typesetting studio with custom CSS, audiobook production with ID3 series tags, and KDP export pipeline.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

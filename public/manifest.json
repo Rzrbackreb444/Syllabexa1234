@@ -1,0 +1,20 @@
+{
+  "short_name": "Syllabexa",
+  "name": "Syllabexa Enterprise Publishing Suite",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#030305",
+  "theme_color": "#030305",
+  "display": "standalone"
+}

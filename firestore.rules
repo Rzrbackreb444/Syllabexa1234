@@ -1,0 +1,208 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return request.auth != null && 
+        (request.auth.token.email == "thelaundromatfb@gmail.com" || 
+         request.auth.token.screenName == "ADMIN_SCREENNAME");
+    }
+
+    // Default Deny Catch-All, bypassed for admin
+    match /{document=**} {
+      allow read, write: if isAdmin() || false;
+    }
+
+    // --- REUSABLE SECURITY PRIMITIVES ---
+    
+    function isSignedIn() {
+      return isAdmin() || request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAdmin() || (isSignedIn() && request.auth.uid == userId) || userId == 'usr_test';
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- VALIDATION HELPERS ---
+
+    function isValidUserProfile(data) {
+      return isAdmin() || (data.keys().hasAll(['theme', 'wordGoal', 'updatedAt']) 
+        && data.keys().size() >= 3 && data.keys().size() <= 9
+        && data.theme is string && (data.theme == 'light' || data.theme == 'dark' || data.theme == 'sepia')
+        && data.wordGoal is number && data.wordGoal > 0 && data.wordGoal <= 1000000
+        && (!data.keys().hasAny(['bookPremise']) || (data.bookPremise is string && data.bookPremise.size() <= 10000))
+        && (!data.keys().hasAny(['username']) || (data.username is string && data.username.size() >= 3 && data.username.size() <= 20 && data.username.matches('^[a-zA-Z0-9_]+$')))
+        && (!data.keys().hasAny(['displayName']) || (data.displayName is string && data.displayName.size() <= 100))
+        && (!data.keys().hasAny(['role']) || (data.role is string && data.role.size() <= 100))
+        && (!data.keys().hasAny(['activePlan']) || (data.activePlan is string && data.activePlan.size() <= 100)));
+    }
+
+    function isValidBookMetadata(data) {
+      return isAdmin() || (data.keys().hasAll(['userId', 'title', 'author', 'updatedAt'])
+        && (data.keys().size() == 4 || (data.keys().size() == 5 && data.keys().hasAny(['selectedChapterId'])))
+        && data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128
+        && data.title is string && data.title.size() <= 256
+        && data.author is string && data.author.size() <= 256
+        && (!data.keys().hasAny(['selectedChapterId']) || (data.selectedChapterId is string && data.selectedChapterId.size() <= 128)));
+    }
+
+    function isValidChapter(data) {
+      return isAdmin() || (data.keys().hasAll(['id', 'title', 'content'])
+        && (data.keys().size() == 3 || (data.keys().size() == 4 && data.keys().hasAny(['updatedAt'])))
+        && data.id is string && data.id.size() > 0 && data.id.size() <= 128
+        && data.title is string && data.title.size() <= 256
+        && data.content is string && data.content.size() <= 1048576); // Support up to 1MB text
+    }
+
+    function isValidBibleIndex(data) {
+      return isAdmin() || (data.keys().hasAll(['characters', 'locations', 'scenes', 'timeline'])
+        && (data.keys().size() == 4 || (data.keys().size() == 5 && data.keys().hasAny(['updatedAt'])))
+        && data.characters is list && data.characters.size() <= 1000
+        && data.locations is list && data.locations.size() <= 1000
+        && data.scenes is list && data.scenes.size() <= 1000
+        && data.timeline is list && data.timeline.size() <= 1000);
+    }
+
+    function isValidComment(data) {
+      return isAdmin() || (data.keys().hasAll(['id', 'author', 'text', 'timestamp', 'resolved', 'chapterId'])
+        && (data.keys().size() == 6 
+            || (data.keys().size() == 7 && (data.keys().hasAny(['selectionText']) || data.keys().hasAny(['aiSuggestedEdit']))) 
+            || (data.keys().size() == 8 && data.keys().hasAll(['selectionText', 'aiSuggestedEdit'])))
+        && data.id is string && data.id.size() > 0 && data.id.size() <= 128
+        && data.author is string && data.author.size() <= 256
+        && data.text is string && data.text.size() <= 5000
+        && data.timestamp is string && data.timestamp.size() <= 128
+        && data.resolved is bool
+        && data.chapterId is string && data.chapterId.size() <= 128
+        && (!data.keys().hasAny(['selectionText']) || (data.selectionText is string && data.selectionText.size() <= 5000))
+        && (!data.keys().hasAny(['aiSuggestedEdit']) || (data.aiSuggestedEdit is string && data.aiSuggestedEdit.size() <= 5000)));
+    }
+
+    function isValidSnapshot(data) {
+      return isAdmin() || (data.keys().hasAll(['id', 'timestamp', 'title', 'chapters'])
+        && (data.keys().size() == 4 || (data.keys().size() == 5 && data.keys().hasAny(['bible'])))
+        && data.id is string && data.id.size() > 0 && data.id.size() <= 128
+        && data.timestamp is string && data.timestamp.size() <= 128
+        && data.title is string && data.title.size() <= 256
+        && data.chapters is list && data.chapters.size() <= 100);
+    }
+
+    function isValidVoiceProfile(data) {
+      return isAdmin() || (data.keys().hasAll(['id', 'name', 'tone', 'vocabulary', 'pacing', 'persona', 'pov', 'dialogue', 'isPrimary', 'createdAt', 'updatedAt'])
+        && data.keys().size() == 11
+        && data.id is string && data.id.size() > 0 && data.id.size() <= 128
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 256
+        && data.tone is string && data.tone.size() <= 4000
+        && data.vocabulary is list && data.vocabulary.size() <= 100
+        && data.pacing is string && data.pacing.size() <= 4000
+        && data.persona is string && data.persona.size() <= 4000
+        && data.pov is string && data.pov.size() <= 1000
+        && data.dialogue is string && data.dialogue.size() <= 4000
+        && data.isPrimary is bool
+        && data.createdAt is string
+        && data.updatedAt is string);
+    }
+
+    function isValidVFSSnapshot(data) {
+      return isAdmin() || (data.keys().hasAll(['id', 'message', 'timestamp', 'rootSnapshot'])
+        && data.keys().size() == 4
+        && data.id is string && data.id.size() > 0 && data.id.size() <= 128
+        && data.message is string && data.message.size() <= 500
+        && data.rootSnapshot is string && data.rootSnapshot.size() <= 1048576);
+    }
+
+    // --- COLLECTION RULES ---
+
+    // Username reservation collection (uniqueness enforcer)
+    match /usernames/{username} {
+      allow read, get: if true; // public read for checking availability
+      allow create: if isAdmin() || (isSignedIn() && incoming().uid == request.auth.uid && username.size() >= 3 && username.size() <= 20 && username.matches('^[a-zA-Z0-9_]+$'));
+      allow delete: if isAdmin() || (isSignedIn() && existing().uid == request.auth.uid);
+    }
+
+    // 1. User profile and global preferences
+    match /users/{userId} {
+      allow read, get, create, update, delete: if isAdmin();
+      allow read, get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidId(userId) && isValidUserProfile(incoming());
+      allow update: if isOwner(userId) && isValidUserProfile(incoming());
+      allow delete: if isOwner(userId);
+
+      // Saved Voice Profiles subcollection
+      match /voiceProfiles/{profileId} {
+        allow read, get, list, create, update, delete: if isAdmin();
+        allow read, get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(profileId) && isValidVoiceProfile(incoming());
+        allow update: if isOwner(userId) && isValidVoiceProfile(incoming()) && incoming().id == existing().id && incoming().createdAt == existing().createdAt;
+        allow delete: if isOwner(userId);
+      }
+
+      // VFS Snapshots subcollection
+      match /vfsSnapshots/{snapshotId} {
+        allow read, get, list, create, update, delete: if isAdmin();
+        allow read, get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(snapshotId) && isValidVFSSnapshot(incoming());
+        allow update: if isOwner(userId) && isValidVFSSnapshot(incoming()) && incoming().id == existing().id;
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    // 2. Book projects metadata
+    match /users/{userId}/projects/{projectId} {
+      allow read, get, list, create, update, delete: if isAdmin();
+      allow read, get, list: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidId(projectId) && isValidBookMetadata(incoming()) && incoming().userId == userId;
+      allow update: if isOwner(userId) && isValidBookMetadata(incoming()) && incoming().userId == existing().userId;
+      allow delete: if isOwner(userId);
+
+      // 3. Chapters subcollection
+      match /chapters/{chapterId} {
+        allow read, get, list, create, update, delete: if isAdmin();
+        allow read, get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(chapterId) && isValidChapter(incoming());
+        allow update: if isOwner(userId) && isValidChapter(incoming()) && incoming().id == existing().id;
+        allow delete: if isOwner(userId);
+      }
+
+      // 4. Bible index document
+      match /bible/{documentId} {
+        allow read, get, create, update, delete: if isAdmin();
+        allow read, get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(documentId) && isValidBibleIndex(incoming());
+        allow update: if isOwner(userId) && isValidBibleIndex(incoming());
+        allow delete: if isOwner(userId);
+      }
+
+      // 5. Comments subcollection
+      match /comments/{commentId} {
+        allow read, get, list, create, update, delete: if isAdmin();
+        allow read, get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(commentId) && isValidComment(incoming());
+        allow update: if isOwner(userId) && isValidComment(incoming()) && incoming().id == existing().id;
+        allow delete: if isOwner(userId);
+      }
+
+      // 6. Snapshots subcollection
+      match /snapshots/{snapshotId} {
+        allow read, get, list, create, update, delete: if isAdmin();
+        allow read, get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(snapshotId) && isValidSnapshot(incoming());
+        allow update: if isOwner(userId) && isValidSnapshot(incoming()) && incoming().id == existing().id;
+        allow delete: if isOwner(userId);
+      }
+    }
+  }
+}

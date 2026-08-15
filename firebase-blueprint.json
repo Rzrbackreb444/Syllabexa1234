@@ -1,0 +1,335 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User preferences and system-wide settings.",
+      "type": "object",
+      "properties": {
+        "theme": {
+          "type": "string",
+          "enum": ["light", "dark", "sepia"],
+          "description": "The active editor layout color theme."
+        },
+        "wordGoal": {
+          "type": "number",
+          "description": "The manuscript daily word writing goal."
+        },
+        "voiceProfile": {
+          "type": "object",
+          "description": "Syllabexa voice-training profile metadata."
+        },
+        "bookPremise": {
+          "type": "string",
+          "description": "The current pitch and book premise of the book."
+        },
+        "username": {
+          "type": "string",
+          "description": "The user's unique username handle."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's customizable display name."
+        },
+        "role": {
+          "type": "string",
+          "description": "The user's custom creator role or title."
+        },
+        "activePlan": {
+          "type": "string",
+          "description": "The user's active billing subscription plan name."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the settings were last updated."
+        }
+      },
+      "required": ["theme", "wordGoal", "updatedAt"]
+    },
+    "BookMetadata": {
+      "title": "BookMetadata",
+      "description": "High-level metadata of a book project.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The owner User ID."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the book."
+        },
+        "author": {
+          "type": "string",
+          "description": "The author name of the book."
+        },
+        "selectedChapterId": {
+          "type": "string",
+          "description": "ID of the currently focused chapter."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the book metadata was last changed."
+        }
+      },
+      "required": ["userId", "title", "author", "updatedAt"]
+    },
+    "Chapter": {
+      "title": "Chapter",
+      "description": "A single chapter manuscript document.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the chapter."
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the chapter."
+        },
+        "content": {
+          "type": "string",
+          "description": "Body manuscript content."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when chapter was saved."
+        }
+      },
+      "required": ["id", "title", "content"]
+    },
+    "BibleIndex": {
+      "title": "BibleIndex",
+      "description": "Complete story bible structure (characters, locations, scenes, timeline).",
+      "type": "object",
+      "properties": {
+        "characters": {
+          "type": "array",
+          "description": "List of character sheets."
+        },
+        "locations": {
+          "type": "array",
+          "description": "List of location sheets."
+        },
+        "scenes": {
+          "type": "array",
+          "description": "List of scene cards."
+        },
+        "timeline": {
+          "type": "array",
+          "description": "List of timeline events."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the story bible was last changed."
+        }
+      }
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "Editorial feedback comments on a specific chapter.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique comment identifier."
+        },
+        "author": {
+          "type": "string",
+          "description": "Comment author."
+        },
+        "text": {
+          "type": "string",
+          "description": "Comment feedback text."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Comment creation timestamp."
+        },
+        "resolved": {
+          "type": "boolean",
+          "description": "Whether the feedback has been resolved."
+        },
+        "chapterId": {
+          "type": "string",
+          "description": "Associated chapter ID."
+        },
+        "selectionText": {
+          "type": "string",
+          "description": "Optional highlighted text snippet."
+        },
+        "aiSuggestedEdit": {
+          "type": "string",
+          "description": "Optional AI-suggested revision content."
+        }
+      },
+      "required": ["id", "author", "text", "timestamp", "resolved", "chapterId"]
+    },
+    "Snapshot": {
+      "title": "Snapshot",
+      "description": "Complete manuscript state snapshot backup checkpoint.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Snapshot unique ID."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when snapshot was taken."
+        },
+        "title": {
+          "type": "string",
+          "description": "Snapshot checkpoint description label."
+        },
+        "chapters": {
+          "type": "array",
+          "description": "State list of chapters at snapshot time."
+        },
+        "bible": {
+          "type": "object",
+          "description": "State bible metadata at snapshot time."
+        }
+      },
+      "required": ["id", "timestamp", "title", "chapters"]
+    },
+    "VFSSnapshot": {
+      "title": "VFSSnapshot",
+      "description": "Virtualized File System commit snapshot state.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Commit ID."
+        },
+        "message": {
+          "type": "string",
+          "description": "Commit message."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp of commit."
+        },
+        "rootSnapshot": {
+          "type": "string",
+          "description": "Serialized VFS root tree JSON string."
+        }
+      },
+      "required": ["id", "message", "timestamp", "rootSnapshot"]
+    },
+    "VoiceProfile": {
+      "title": "VoiceProfile",
+      "description": "An author voice profile generated by Syllabexa voice training.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the voice profile."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name given to this voice profile by the user."
+        },
+        "tone": {
+          "type": "string",
+          "description": "The tone extracted from the author's writing."
+        },
+        "vocabulary": {
+          "type": "array",
+          "description": "Key words and phrases typical of the style."
+        },
+        "pacing": {
+          "type": "string",
+          "description": "The style's pacing characteristics."
+        },
+        "persona": {
+          "type": "string",
+          "description": "The author's writing persona."
+        },
+        "pov": {
+          "type": "string",
+          "description": "The grammatical point of view."
+        },
+        "dialogue": {
+          "type": "string",
+          "description": "Dialogue styling details."
+        },
+        "isPrimary": {
+          "type": "boolean",
+          "description": "Whether this is the primary voice profile for the Autopilot engine."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the voice profile was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the voice profile was last updated."
+        }
+      },
+      "required": ["id", "name", "tone", "vocabulary", "pacing", "persona", "pov", "dialogue", "isPrimary", "createdAt", "updatedAt"]
+    },
+    "UsernameClaim": {
+      "title": "UsernameClaim",
+      "description": "A claim mapping a unique username to a user's UID.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The owner's User UID."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the username claim was created."
+        }
+      },
+      "required": ["uid"]
+    }
+  },
+  "firestore": {
+    "usernames/{username}": {
+      "schema": "UsernameClaim",
+      "description": "Mapping of usernames to UIDs for uniqueness."
+    },
+    "users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User general settings and voice trainer config."
+    },
+    "users/{userId}/voiceProfiles/{profileId}": {
+      "schema": "VoiceProfile",
+      "description": "Saved author voice profiles."
+    },
+    "users/{userId}/projects/{projectId}": {
+      "schema": "BookMetadata",
+      "description": "The active book project configuration."
+    },
+    "users/{userId}/projects/{projectId}/chapters/{chapterId}": {
+      "schema": "Chapter",
+      "description": "Subcollection of all book manuscript chapters."
+    },
+    "users/{userId}/projects/{projectId}/bible/index": {
+      "schema": "BibleIndex",
+      "description": "Complete story bible index details."
+    },
+    "users/{userId}/projects/{projectId}/comments/{commentId}": {
+      "schema": "Comment",
+      "description": "Subcollection of user feedback/editorial comments."
+    },
+    "users/{userId}/projects/{projectId}/snapshots/{snapshotId}": {
+      "schema": "Snapshot",
+      "description": "Subcollection of user backups and checkpoints."
+    },
+    "users/{userId}/vfsSnapshots/{snapshotId}": {
+      "schema": "VFSSnapshot",
+      "description": "Virtual File System git-like commit snapshots."
+    }
+  }
+}

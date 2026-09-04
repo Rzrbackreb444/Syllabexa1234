@@ -1,20 +1,19 @@
 const fs = require('fs');
-let code = fs.readFileSync('src/components/TypesetterSimulator.tsx', 'utf8');
+const file = './src/components/TypesetterSimulator.tsx';
+let content = fs.readFileSync(file, 'utf8');
 
-const regexToReplace = /<label className="flex items-center justify-between cursor-pointer">\s*<span className="text-xs text-slate-300 flex items-center gap-2"><ScanLine className="w-3 h-3" \/> Show Safe Margins<\/span>\s*<input type="checkbox" checked=\{showTrimLines\} onChange=\{\(e\) => setShowTrimLines\(e\.target\.checked\)\} className="accent-indigo-500" \/>\s*<\/label>/;
+// I just added simulateMultipassLayout above useEffect. Let's make the useEffect use it.
+const searchStr2 = `    worker.onmessage = (e) => {
+      setFormattedContent(e.data.chunks[0] || rawText);
+    };`;
+    
+const replaceStr2 = `    worker.onmessage = async (e) => {
+      const container = document.createElement('div');
+      container.innerHTML = e.data.chunks[0] || rawText;
+      await simulateMultipassLayout(container);
+      setFormattedContent(container.innerHTML);
+    };`;
 
-const newCheckboxes = `
-                  <label className="flex items-center justify-between cursor-pointer">
-                    <span className="text-xs text-slate-300 flex items-center gap-2"><ScanLine className="w-3 h-3" /> Show Safe Margins</span>
-                    <input type="checkbox" checked={showTrimLines} onChange={(e) => setShowTrimLines(e.target.checked)} className="accent-indigo-500" />
-                  </label>
-                </div>
-                <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 mt-2">
-                  <label className="flex items-center justify-between cursor-pointer">
-                    <span className="text-xs text-amber-200 flex items-center gap-2"><ScanLine className="w-3 h-3" /> Layout Warnings (Orphans)</span>
-                    <input type="checkbox" checked={showOrphans} onChange={(e) => setShowOrphans(e.target.checked)} className="accent-amber-500" />
-                  </label>
-`;
-
-code = code.replace(regexToReplace, newCheckboxes);
-fs.writeFileSync('src/components/TypesetterSimulator.tsx', code);
+content = content.replace(searchStr2, replaceStr2);
+fs.writeFileSync(file, content);
+console.log('Patched TypesetterSimulator.tsx pass 2');

@@ -1,9 +1,0 @@
-const fs = require('fs');
-
-let layoutCode = fs.readFileSync('src/AppLayout.tsx', 'utf8');
-
-const mobileMenuBefore = "              {[\n                { id: 'quick-start', icon: <Sparkles size={14} />, label: 'Hub' },\n                { id: 'editor', icon: <Feather size={14} />, label: 'Writer' },\n                { id: 'syllabexa-typesetter', icon: <LayoutGrid size={14} />, label: 'Typesetter' },\n                { id: 'syllabexa-visual-studio', icon: <Cpu size={14} />, label: 'Studio' },\n                { id: 'syllabexa-voice', icon: <Mic size={14} />, label: 'Voice' },\n                { id: 'pipeline', icon: <Cpu size={14} className=\"text-indigo-400\" />, label: 'AI' },\n                { id: 'course-workbook', icon: <GraduationCap size={14} />, label: 'Workbooks' }\n              ]";
-const mobileMenuAfter = "              {[\n                { id: 'quick-start', icon: <Sparkles size={14} />, label: 'Hub' },\n                { id: 'editor', icon: <Feather size={14} />, label: 'Writer' },\n                { id: 'syllabexa-typesetter', icon: <LayoutGrid size={14} />, label: 'Typesetter' },\n                { id: 'syllabexa-visual-studio', icon: <Cpu size={14} />, label: 'Studio' },\n                { id: 'syllabexa-voice', icon: <Mic size={14} />, label: 'Voice' },\n                { id: 'commerce', icon: <Store size={14} className=\"text-amber-400\" />, label: 'Commerce' },\n                { id: 'theme-builder', icon: <Palette size={14} className=\"text-emerald-400\" />, label: 'Themes' },\n                { id: 'pipeline', icon: <Cpu size={14} className=\"text-indigo-400\" />, label: 'AI' },\n                { id: 'course-workbook', icon: <GraduationCap size={14} />, label: 'Workbooks' }\n              ]";
-layoutCode = layoutCode.replace(mobileMenuBefore, mobileMenuAfter);
-
-fs.writeFileSync('src/AppLayout.tsx', layoutCode);

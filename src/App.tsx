@@ -92,9 +92,9 @@ export default function App() {
                 <Route path="billing" element={<ProtectedAuthRoute><SyllabexaBilling /></ProtectedAuthRoute>} />
                 
                 {/* --- LOCKED PREMIUM LITERARY STUDIOS --- */}
-                <Route index element={<ProtectedProRoute><DashboardHub /></ProtectedProRoute>} />
-                <Route path="editor" element={<ProtectedProRoute><EditorWorkspace /></ProtectedProRoute>} />
-                <Route path="typesetter" element={<ProtectedProRoute><TypesetterSimulator /></ProtectedProRoute>} />
+                <Route index element={<ProtectedAuthRoute><DashboardHub /></ProtectedAuthRoute>} />
+                <Route path="editor" element={<ProtectedAuthRoute><EditorWorkspace /></ProtectedAuthRoute>} />
+                <Route path="typesetter" element={<ProtectedAuthRoute><TypesetterSimulator /></ProtectedAuthRoute>} />
                 <Route path="visual-studio" element={<ProtectedProRoute><SyllabexaVisualStudio /></ProtectedProRoute>} />
                 <Route path="courses" element={<ProtectedProRoute><CourseWorkbookStudio /></ProtectedProRoute>} />
                 <Route path="voice" element={<ProtectedProRoute><VoiceStudio /></ProtectedProRoute>} />

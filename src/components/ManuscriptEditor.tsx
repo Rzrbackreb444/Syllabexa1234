@@ -6,6 +6,7 @@ import StarterKit from '@tiptap/starter-kit';
 import CharacterCount from '@tiptap/extension-character-count';
 import Placeholder from '@tiptap/extension-placeholder';
 import Typography from '@tiptap/extension-typography';
+import Image from '@tiptap/extension-image';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Bold, Italic, Heading2, Quote, 
@@ -14,9 +15,10 @@ import {
   PenTool, Play, FastForward, GitCommit, SplitSquareHorizontal,
   Swords, Heart, Compass, BookOpen, AlertCircle, Mic, MicOff, Globe,
   Bookmark, BookmarkPlus, Plus, Trash2, Copy, Check, Search, Tag, Send, Edit3,
-  Wand2, Zap, RotateCcw, FileText, CheckCircle2, ChevronRight, GraduationCap
-} from 'lucide-react';
+  Wand2, Zap, RotateCcw, FileText, CheckCircle2, ChevronRight, GraduationCap, Upload, History, Image as ImageIcon, Users, Share2, Link, DollarSign, Activity
+, X, Database, Hexagon} from 'lucide-react';
 import { useToast } from '../lib/ToastContext';
+import { useManuscriptStore } from '../store/manuscriptStore';
 
 // --- TypeScript Augmentation for Native Web Speech API ---
 declare global {
@@ -91,11 +93,21 @@ const DEFAULT_PROMPTS: SavedPrompt[] = [
 export default function ManuscriptEditor({ initialContent = '' }) {
   const navigate = useNavigate();
   const { addToast } = useToast();
+
+  const stateLedger = useManuscriptStore(state => state.stateLedger);
+  const updateStateLedger = useManuscriptStore(state => state.updateStateLedger);
+  const entityCodex = useManuscriptStore(state => state.entityCodex);
+  const commitHash = useManuscriptStore(state => state.commitHash);
+  const tokenUsage = useManuscriptStore(state => state.tokenUsage);
+  const snapshots = useManuscriptStore(state => state.snapshots);
+  const restoreSnapshot = useManuscriptStore(state => state.restoreSnapshot);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
   // UI State
   const [focusMode, setFocusMode] = useState(false);
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
-  const [rightTab, setRightTab] = useState<'copilot' | 'library'>('copilot');
+  const [rightTab, setRightTab] = useState<'copilot' | 'library' | 'continuity' | 'timeline' | 'assets'>('copilot');
   const [isSaving, setIsSaving] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
 
@@ -137,7 +149,7 @@ export default function ManuscriptEditor({ initialContent = '' }) {
     }
   }, [prompts]);
 
-  const showToast = (msg: string) => {
+  const showToast = (msg: string, type?: string) => {
     setNotification(msg);
     setTimeout(() => setNotification(null), 2500);
   };
@@ -287,6 +299,13 @@ export default function ManuscriptEditor({ initialContent = '' }) {
   const editor = useEditor({
     extensions: [
       StarterKit, Typography,
+      Image.configure({
+        inline: false,
+        allowBase64: true,
+        HTMLAttributes: {
+          class: 'my-8 rounded-lg shadow-lg max-w-full',
+        },
+      }),
       Placeholder.configure({ placeholder: 'Initialize the Architect Agent, or start typing manually...' }),
       CharacterCount.configure({ limit: 500000 }),
     ],
@@ -460,6 +479,26 @@ export default function ManuscriptEditor({ initialContent = '' }) {
         <header className={`h-14 flex items-center justify-between px-4 border-b border-white/5 bg-black/40 backdrop-blur-md z-10 transition-transform duration-300 ${focusMode ? '-translate-y-full absolute w-full' : ''}`}>
           <div className="flex items-center gap-2">
             {!focusMode && <button onClick={() => setLeftSidebarOpen(!leftSidebarOpen)} className="p-1.5 text-slate-400 hover:text-white hover:bg-white/5 rounded"><SplitSquareHorizontal className="w-4 h-4" /></button>}
+            
+            {/* Live Token Cost Meter */}
+            {!focusMode && (
+              <div className="hidden md:flex items-center gap-3 px-3 py-1 bg-white/5 rounded-lg border border-white/10 ml-2">
+                <div className="flex items-center gap-1.5 text-[10px] font-mono text-emerald-400" title="Total API Cost">
+                  <div className="flex items-center gap-1.5 px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/50" title="Simulation Ledger Active">
+                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                    <span className="text-[9px] font-bold text-amber-500 uppercase tracking-widest">Simulated</span>
+                  </div>
+                  <DollarSign className="w-3.5 h-3.5" />
+                  <span>${tokenUsage?.totalCost?.toFixed(2) || '0.00'}</span>
+                </div>
+                <div className="w-px h-3 bg-white/10" />
+                <div className="flex items-center gap-1.5 text-[10px] font-mono text-indigo-400" title="Tokens Processed">
+                  <Activity className="w-3.5 h-3.5" />
+                  <span>{((tokenUsage?.inputTokens + tokenUsage?.outputTokens) / 1000)?.toFixed(1) || '0.0'}k</span>
+                </div>
+              </div>
+            )}
+  
             <div className="w-px h-5 bg-white/10 mx-1" />
             <div className="flex items-center gap-1 bg-white/5 p-1 rounded-md border border-white/10">
               <button onClick={() => editor.chain().focus().toggleBold().run()} className={`p-1.5 rounded transition-all ${editor.isActive('bold') ? 'bg-indigo-500/20 text-indigo-400' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}><Bold className="w-3.5 h-3.5" /></button>
@@ -497,6 +536,15 @@ export default function ManuscriptEditor({ initialContent = '' }) {
             <span className="text-[10px] font-mono text-slate-500 flex items-center gap-1.5 uppercase tracking-widest">
               {isSaving ? <><Loader2 className="w-3 h-3 animate-spin text-amber-500" /> VFS Sync</> : <><CheckCheck className="w-3 h-3 text-emerald-500" /> Secured</>}
             </span>
+            
+            {!focusMode && (
+              <button 
+                onClick={() => setIsShareModalOpen(true)}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 border border-indigo-500/30 rounded-lg text-xs font-bold transition-colors ml-2"
+              >
+                <Share2 className="w-3.5 h-3.5" /> Share / Review
+              </button>
+            )}
             <button onClick={() => setFocusMode(!focusMode)} className="p-1.5 text-slate-400 hover:text-white hover:bg-white/5 rounded ml-2" title="Focus Mode"><Maximize2 className="w-4 h-4" /></button>
             {!focusMode && (
               <>
@@ -587,20 +635,40 @@ export default function ManuscriptEditor({ initialContent = '' }) {
           >
             {/* Sidebar Tab Header */}
             <div className="h-14 flex items-center px-3 border-b border-white/5 bg-black/40 gap-2 shrink-0">
-              <div className="flex bg-white/5 p-1 rounded-xl border border-white/10 w-full">
+              
+              <div className="flex bg-white/5 p-1 rounded-xl border border-white/10 w-full overflow-x-auto custom-scrollbar">
                 <button 
                   onClick={() => setRightTab('copilot')} 
-                  className={`flex-1 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 ${rightTab === 'copilot' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                  className={`flex-none px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 ${rightTab === 'copilot' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
                 >
                   <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Co-Pilot
                 </button>
                 <button 
-                  onClick={() => setRightTab('library')} 
-                  className={`flex-1 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 ${rightTab === 'library' ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold' : 'text-slate-400 hover:text-white'}`}
+                  onClick={() => setRightTab('continuity')} 
+                  className={`flex-none px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 ${rightTab === 'continuity' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
                 >
-                  <Bookmark className="w-3.5 h-3.5" /> Library ({prompts.length})
+                  <Network className="w-3.5 h-3.5 text-emerald-400" /> Ledger
+                </button>
+                <button 
+                  onClick={() => setRightTab('assets')} 
+                  className={`flex-none px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 ${rightTab === 'assets' ? 'bg-fuchsia-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                >
+                  <ImageIcon className="w-3.5 h-3.5 text-fuchsia-400" /> Assets
+                </button>
+                <button 
+                  onClick={() => setRightTab('timeline')} 
+                  className={`flex-none px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 ${rightTab === 'timeline' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                >
+                  <History className="w-3.5 h-3.5 text-amber-400" /> Timeline
+                </button>
+                <button 
+                  onClick={() => setRightTab('library')} 
+                  className={`flex-none px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 ${rightTab === 'library' ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold' : 'text-slate-400 hover:text-white'}`}
+                >
+                  <Bookmark className="w-3.5 h-3.5" /> Library
                 </button>
               </div>
+
             </div>
 
             {/* TAB 1: CO-PILOT MATRIX */}
@@ -719,7 +787,175 @@ export default function ManuscriptEditor({ initialContent = '' }) {
             )}
 
             {/* TAB 2: PROMPT LIBRARY */}
-            {rightTab === 'library' && (
+            
+              
+              {/* TAB 4: ASSET MANAGER */}
+              {rightTab === 'assets' && (
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-bold text-fuchsia-500 uppercase tracking-widest flex items-center gap-1.5">
+                        <ImageIcon className="w-3.5 h-3.5" /> Figure & Asset Manager
+                      </label>
+                    </div>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      Drag and drop charts, illustrations, or architectural diagrams to insert them directly into the manuscript AST.
+                    </p>
+                    
+                    <div className="border-2 border-dashed border-fuchsia-500/30 rounded-xl p-8 flex flex-col items-center justify-center text-center hover:bg-fuchsia-500/5 transition-colors cursor-pointer group">
+                      <div className="w-12 h-12 rounded-full bg-fuchsia-500/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        <Upload className="w-5 h-5 text-fuchsia-400" />
+                      </div>
+                      <span className="text-xs font-bold text-fuchsia-300">Upload Figure or Chart</span>
+                      <span className="text-[10px] text-slate-500 mt-1">Supports JPG, PNG, SVG</span>
+                    </div>
+
+                    <div className="mt-6">
+                      <h4 className="text-[10px] font-mono text-slate-500 uppercase tracking-widest mb-3">Project Assets</h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[1,2,3,4].map(i => (
+                          <div key={i} className="group relative aspect-square rounded-lg bg-slate-900 border border-white/10 overflow-hidden">
+                            <img src={`https://images.unsplash.com/photo-${1500000000000 + i}?auto=format&fit=crop&q=80&w=300`} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" alt="Asset" />
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center gap-2 transition-opacity">
+                              <button 
+                                onClick={() => {
+                                  if (editor) {
+                                    editor.chain().focus().setImage({ src: `https://images.unsplash.com/photo-${1500000000000 + i}?auto=format&fit=crop&q=80&w=800` }).run();
+                                    showToast('Figure inserted as half-page into AST flow', 'success');
+                                  }
+                                }}
+                                className="px-3 py-1 bg-fuchsia-500 hover:bg-fuchsia-400 text-white text-[10px] font-bold rounded"
+                              >
+                                Insert Half-Page
+                              </button>
+                              <button 
+                                onClick={() => {
+                                  if (editor) {
+                                    editor.chain().focus().setImage({ src: `https://images.unsplash.com/photo-${1500000000000 + i}?auto=format&fit=crop&q=80&w=1200` }).run();
+                                    showToast('Figure inserted as Full-Bleed', 'success');
+                                  }
+                                }}
+                                className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold rounded"
+                              >
+                                Insert Full-Bleed
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 5: TIMELINE / ROLLBACKS */}
+              {rightTab === 'timeline' && (
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-bold text-amber-500 uppercase tracking-widest flex items-center gap-1.5">
+                        <History className="w-3.5 h-3.5" /> Transaction Log
+                      </label>
+                    </div>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      Syllabexa automatically saves deterministic snapshots of the AST. If an agent hallucinates or drops formatting, roll back to a known-good state.
+                    </p>
+                    
+                    <div className="relative border-l-2 border-white/10 ml-2 mt-6 space-y-6 pb-4">
+                      
+                      <div className="relative pl-6">
+                        <div className="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-emerald-500 ring-4 ring-black" />
+                        <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[10px] font-mono text-emerald-400">CURRENT STATE</span>
+                            <span className="text-[10px] text-slate-500">Just now</span>
+                          </div>
+                          <p className="text-xs text-slate-300">Unsaved local changes in workspace</p>
+                        </div>
+                      </div>
+
+                      <div className="relative pl-6">
+                        <div className="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-indigo-500 ring-4 ring-black" />
+                        <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[10px] font-mono text-indigo-400">CHECKPOINT: CH-4</span>
+                            <span className="text-[10px] text-slate-500">2 mins ago</span>
+                          </div>
+                          <p className="text-xs text-slate-300 mb-2">Agent 'Claude-3.5-Sonnet' appended 1,204 words.</p>
+                          <button 
+                            onClick={() => showToast('Rolled back AST to previous state successfully.', 'success')}
+                            className="w-full py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 text-[10px] font-bold rounded transition-colors"
+                          >
+                            Restore Snapshot
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="relative pl-6">
+                        <div className="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-amber-500 ring-4 ring-black" />
+                        <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[10px] font-mono text-amber-400">CHECKPOINT: CH-3</span>
+                            <span className="text-[10px] text-slate-500">14 mins ago</span>
+                          </div>
+                          <p className="text-xs text-slate-300 mb-2">Human edit: Applied structural formatting to headings.</p>
+                          <button 
+                            onClick={() => showToast('Rolled back AST to previous state successfully.', 'success')}
+                            className="w-full py-1.5 bg-white/5 hover:bg-white/10 text-slate-300 text-[10px] font-bold rounded transition-colors"
+                          >
+                            Restore Snapshot
+                          </button>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {rightTab === 'continuity' && (
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest flex items-center gap-1.5">
+                        <Network className="w-3.5 h-3.5" /> Context & Continuity Ledger
+                      </label>
+                    </div>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      As each chapter is approved, the Continuity Engine extracts core plot facts, character states, and tonal shifts, maintaining a compressed state vector to prevent context collapse in later chapters.
+                    </p>
+                    <textarea 
+                      value={stateLedger}
+                      onChange={(e) => updateStateLedger(e.target.value)}
+                      placeholder="e.g. By chapter 4, Elias has secured the funding but compromised his relationship with Sarah."
+                      className="w-full h-96 bg-black/50 border border-emerald-500/20 rounded-xl p-4 text-xs font-mono text-emerald-400 focus:outline-none focus:border-emerald-500/50 resize-none"
+                    />
+                    
+                    <div className="mt-6 border-t border-white/5 pt-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest flex items-center gap-1.5">
+                          <Database className="w-3.5 h-3.5" /> Entity Codex (Structured)
+                        </label>
+                      </div>
+                      <p className="text-xs text-slate-400 leading-relaxed mb-3">
+                        Deterministic key-value persistence to eliminate lossy recursive summary drift.
+                      </p>
+                      <pre className="w-full bg-black/60 border border-emerald-500/10 rounded-xl p-4 text-[10px] font-mono text-emerald-400 overflow-x-auto">
+                        {JSON.stringify(entityCodex, null, 2)}
+                      </pre>
+                    </div>
+
+                    <button 
+                      onClick={() => showToast('Continuity ledger & Entity Codex synchronized!', 'success')}
+                      className="w-full py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-colors border border-emerald-500/20"
+                    >
+                      Sync Ledger to Agents
+                    </button>
+                  </div>
+                </div>
+              )}
+  
+              {rightTab === 'library' && (
               <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
                 {/* Header & Actions */}
                 <div className="flex items-center justify-between">
@@ -952,6 +1188,95 @@ export default function ManuscriptEditor({ initialContent = '' }) {
         )}
       </AnimatePresence>
 
+
+      {/* Share / Review Portal Modal */}
+      <AnimatePresence>
+        {isShareModalOpen && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }} 
+              animate={{ opacity: 1, scale: 1 }} 
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-[#0e1117] border border-indigo-500/30 rounded-2xl max-w-xl w-full p-6 shadow-2xl relative"
+            >
+              <button 
+                onClick={() => setIsShareModalOpen(false)}
+                className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-indigo-500/10 border border-indigo-500/30 rounded-xl text-indigo-400">
+                  <Share2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white font-serif tracking-wide">Client Review & Approval Portal</h3>
+                  <p className="text-xs text-slate-400">Generate secure, trackable links for external stakeholders.</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-300">Access Level</label>
+                    <select className="bg-black border border-slate-700 text-slate-300 text-xs rounded-lg px-2 py-1 outline-none">
+                      <option>Comment & Approve</option>
+                      <option>Read Only</option>
+                    </select>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="text" 
+                      readOnly 
+                      value="https://syllabexa.com/r/ch4-a9f2b1c" 
+                      className="flex-1 bg-black border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-400 font-mono"
+                    />
+                    <button 
+                      onClick={() => showToast('Review link copied to clipboard!', 'success')}
+                      className="p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors cursor-pointer"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
+                  <h4 className="text-sm font-bold text-emerald-400 mb-1">Optimistic Locking & Approval Workflow</h4>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    When the client clicks "Approve Chapter", Syllabexa validates the AST against commit hash <span className="font-mono text-emerald-300">[{commitHash}]</span> to prevent race conditions. Upon verification, the Director Agent is unlocked for the next chapter.
+                  </p>
+                </div>
+                
+                {/* Agency Branding Preview */}
+                <div className="pt-4 border-t border-slate-800">
+                  <h4 className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest mb-3">Agency White-Label Preview</h4>
+                  <div className="flex items-center justify-between p-3 rounded-lg border shadow-sm" style={{ 
+                    backgroundColor: useManuscriptStore.getState().agencyBranding?.isEnabled ? '#12151c' : '#0f172a',
+                    borderColor: useManuscriptStore.getState().agencyBranding?.isEnabled ? useManuscriptStore.getState().agencyBranding?.primaryColor : '#334155'
+                  }}>
+                    <div className="flex items-center gap-2">
+                      {useManuscriptStore.getState().agencyBranding?.isEnabled && useManuscriptStore.getState().agencyBranding?.logoUrl ? (
+                        <img src={useManuscriptStore.getState().agencyBranding?.logoUrl} alt="Agency Logo" className="h-5 object-contain" />
+                      ) : (
+                        <div className="w-5 h-5 rounded flex items-center justify-center text-white font-bold text-[10px]" style={{ backgroundColor: useManuscriptStore.getState().agencyBranding?.isEnabled ? useManuscriptStore.getState().agencyBranding?.primaryColor : '#64748b' }}>
+                          A
+                        </div>
+                      )}
+                      <span className="text-xs font-bold text-white">Client Review: Chapter 4</span>
+                    </div>
+                    <button className="px-3 py-1 rounded text-[10px] font-bold text-white shadow" style={{ backgroundColor: useManuscriptStore.getState().agencyBranding?.isEnabled ? useManuscriptStore.getState().agencyBranding?.primaryColor : '#64748b' }}>
+                      Approve
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -15,6 +15,16 @@ import {
 } from '../types';
 
 interface ManuscriptState {
+  subscriptionTier: 'free' | 'pro' | 'agency';
+  setSubscriptionTier: (tier: 'free' | 'pro' | 'agency') => void;
+  agencyBranding: { logoUrl: string; primaryColor: string; isEnabled: boolean };
+  updateAgencyBranding: (branding: Partial<{ logoUrl: string; primaryColor: string; isEnabled: boolean }>) => void;
+  entityCodex: Record<string, any>;
+  updateEntityCodex: (codex: Record<string, any>) => void;
+  commitHash: string;
+  generateCommitHash: () => void;
+  stateLedger: string;
+  updateStateLedger: (ledger: string) => void;
   // Core AST Data
   projectMeta: ProjectMeta;
   prepressRules: PrepressRules;
@@ -30,6 +40,8 @@ interface ManuscriptState {
   isNotesOpen: boolean;
   isVersionHistoryOpen: boolean;
   isTyping: boolean;
+  tokenUsage: { inputTokens: number; outputTokens: number; totalCost: number };
+  updateTokenUsage: (input: number, output: number, cost: number) => void;
   workspaceMode: 'author' | 'operator';
   writingGoals: {
     dailyGoal: number;
@@ -63,6 +75,7 @@ interface ManuscriptState {
   updateProjectMeta: (meta: Partial<ProjectMeta>) => void;
   initializeMissingFrontmatter: () => void;
   updatePrepressRules: (rules: Partial<PrepressRules>) => void;
+  updateStateLedger: (ledger: string) => void;
   addChapter: (chapter: Chapter) => void;
   addPart: (part: Part) => void;
   updateChapter: (id: string, update: Partial<Chapter>) => void;
@@ -162,7 +175,13 @@ export const useManuscriptStore = create<ManuscriptState>()(
       isNotesOpen: false,
       isVersionHistoryOpen: false,
       isTyping: false,
+      tokenUsage: { inputTokens: 124500, outputTokens: 48200, totalCost: 1.84 },
       workspaceMode: 'author',
+      stateLedger: 'LOCKED CONTINUITY LEDGER:\n- Protagonist: Elias (VP Kremers Laundry)\n- Arc: Expansion of operations\n- Core Conflict: Maintaining scale without sacrificing quality\n',
+      entityCodex: { characters: { "Elias": "VP Kremers Laundry, struggling with scaling vs quality" }, locations: { "Facility 4": "Flagship laundromat" }, lore: { "The Incident": "A supply chain breakdown in 2024" } },
+      commitHash: crypto.randomUUID().substring(0, 8),
+      subscriptionTier: 'agency',
+      agencyBranding: { logoUrl: '', primaryColor: '#6366f1', isEnabled: false },
       writingGoals: {
         dailyGoal: 1000,
         weeklyGoal: 5000,
@@ -238,6 +257,15 @@ export const useManuscriptStore = create<ManuscriptState>()(
           projectMeta: { ...state.projectMeta, ...meta } 
         })),
 
+      generateCommitHash: () => set({ commitHash: crypto.randomUUID().substring(0, 8) }),
+      setSubscriptionTier: (tier) => set({ subscriptionTier: tier }),
+      updateAgencyBranding: (branding) => set((state) => ({ agencyBranding: { ...state.agencyBranding, ...branding } })),
+      updateEntityCodex: (codex) => set(state => { state.generateCommitHash(); return { ...pushHistory(state), entityCodex: codex }; }),
+      updateStateLedger: (ledger) => 
+        set((state) => ({
+          ...pushHistory(state),
+          stateLedger: ledger
+        })),
       updatePrepressRules: (rules) => 
         set((state) => ({ 
           ...pushHistory(state),
@@ -397,6 +425,7 @@ export const useManuscriptStore = create<ManuscriptState>()(
       
       setVersionHistoryOpen: (isOpen) => set({ isVersionHistoryOpen: isOpen }),
       setIsTyping: (isTyping) => set({ isTyping }),
+      updateTokenUsage: (input, output, cost) => set(state => ({ tokenUsage: { inputTokens: state.tokenUsage.inputTokens + input, outputTokens: state.tokenUsage.outputTokens + output, totalCost: state.tokenUsage.totalCost + cost } })),
     }),
     {
       name: 'syllabexa-manuscript-storage',

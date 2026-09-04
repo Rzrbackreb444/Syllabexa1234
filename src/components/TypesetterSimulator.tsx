@@ -62,6 +62,7 @@ export default function TypesetterSimulator({ isSplitView = false }: { isSplitVi
   const [showOrphans, setShowOrphans] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [showInspectorModal, setShowInspectorModal] = useState(false);
+  const [preflightStatus, setPreflightStatus] = useState<'idle' | 'running' | 'passed'>('idle');
   const [showBarcodeVerifyModal, setShowBarcodeVerifyModal] = useState(false);
   const [showCoverStudioModal, setShowCoverStudioModal] = useState(false);
   
@@ -124,13 +125,39 @@ export default function TypesetterSimulator({ isSplitView = false }: { isSplitVi
     indigo: "from-indigo-900 via-slate-900 to-black"
   };
 
+  const simulateMultipassLayout = async (containerNode) => {
+    return new Promise(resolve => {
+      setTimeout(() => {
+        const images = containerNode.querySelectorAll('img');
+        images.forEach(img => {
+          if (img.width > 400 || img.classList.contains('full-bleed')) {
+            img.style.pageBreakBefore = 'always';
+            img.style.pageBreakAfter = 'always';
+          }
+        });
+        
+        const paragraphs = containerNode.querySelectorAll('p, div');
+        paragraphs.forEach(p => {
+          p.style.orphans = '3';
+          p.style.widows = '3';
+          p.style.textAlign = 'justify';
+        });
+
+        resolve(true);
+      }, 600);
+    });
+  };
+
   useEffect(() => {
     const rawText = chapters[0]?.content || "Your manuscript text will flow here dynamically. The layout engine utilizes strict CSS Paged Media standards to ensure orphans, widows, and baseline grids are mathematically perfect before export. Adjust the sliders in the left panel to see this text reflow in real-time.";
     
     const worker = new Worker(new URL('../workers/prepressWorker.ts', import.meta.url), { type: 'module' });
     
-    worker.onmessage = (e) => {
-      setFormattedContent(e.data.chunks[0] || rawText);
+    worker.onmessage = async (e) => {
+      const container = document.createElement('div');
+      container.innerHTML = e.data.chunks[0] || rawText;
+      await simulateMultipassLayout(container);
+      setFormattedContent(container.innerHTML);
     };
 
     worker.postMessage({ 
@@ -655,7 +682,7 @@ export default function TypesetterSimulator({ isSplitView = false }: { isSplitVi
                     <p className="text-xs font-mono text-emerald-400">Zero-Rasterization Vector SVG/PDF Engine</p>
                   </div>
                 </div>
-                <button onClick={() => setShowInspectorModal(false)} className="p-1.5 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-colors cursor-pointer">
+                <button onClick={() => { setShowInspectorModal(false); setTimeout(() => setPreflightStatus('idle'), 300); }} className="p-1.5 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-colors cursor-pointer">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -679,7 +706,7 @@ export default function TypesetterSimulator({ isSplitView = false }: { isSplitVi
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-2">
-                <button onClick={() => setShowInspectorModal(false)} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-mono text-xs cursor-pointer">
+                <button onClick={() => { setShowInspectorModal(false); setTimeout(() => setPreflightStatus('idle'), 300); }} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-mono text-xs cursor-pointer">
                   Close
                 </button>
               </div>

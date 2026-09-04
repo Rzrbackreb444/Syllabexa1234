@@ -3,6 +3,7 @@ import { Download, ShieldCheck, AlertTriangle, CheckCircle2, FileText, Cpu, X, B
 import { PrepressTestSuite, PreflightAssertionResult } from '../services/PrepressTestSuite';
 import { PODIntegrationService } from '../services/podIntegration';
 import { PdfEngine } from '../services/pdfEngine';
+import { ExportEngine } from '../services/exportEngine';
 import { useManuscriptStore } from '../store/manuscriptStore';
 
 interface ExportModalProps {
@@ -39,7 +40,8 @@ export default function ExportModal({ onClose }: ExportModalProps) {
     setResolvedFixes(prev => ({ ...prev, [ruleName]: true }));
   };
 
-    const handleExport = async (format: string) => {
+    
+  const handleExport = async (format: string) => {
     if (hasErrors) {
       alert('Cannot export: Unresolved pre-flight errors detected.');
       return;
@@ -47,20 +49,23 @@ export default function ExportModal({ onClose }: ExportModalProps) {
     
     setIsExporting(true);
     try {
-      const pdfBytes = await PdfEngine.generatePrintReadyPdf('<html>mock</html>', {
-        compliance: 'PDF/X-1a:2001',
-        embedFonts: true,
-        cmykProfile: 'FOGRA39',
-        stripUnusedGlyphs: true
-      });
-      alert(`Successfully generated ${format} export package (${title}) with 100% pre-flight certification using WASM PDF Engine!`);
+      if (format.includes('PDF')) {
+        await ExportEngine.exportPDF(title, manuscript.projectMeta?.author || 'Author', chapters);
+      } else if (format.includes('EPUB')) {
+        await ExportEngine.exportEPUB(title, manuscript.projectMeta?.author || 'Author', chapters);
+      } else if (format.includes('DOCX')) {
+        await ExportEngine.exportDOCX(title, manuscript.projectMeta?.author || 'Author', chapters);
+      }
+      alert(`Successfully generated ${format} export package (${title}) with 100% pre-flight certification!`);
       onClose();
     } catch (e) {
-      alert('Export failed.');
+      console.error('Export error:', e);
+      alert('Export failed. Please check console for details.');
     } finally {
       setIsExporting(false);
     }
   };
+
 
   const handleDirectToPressOrder = async () => {
     if (hasErrors) {
@@ -271,6 +276,22 @@ export default function ExportModal({ onClose }: ExportModalProps) {
               <span>{isOrderingProof ? 'Submitting to Press...' : 'Direct-to-Press Order'}</span>
             </button>
 
+            <button 
+              onClick={() => handleExport('EPUB (KDP Ready)')}
+              disabled={hasErrors || isExporting}
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl transition-all disabled:opacity-50 flex items-center space-x-2"
+            >
+              {isExporting ? <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Download size={14} />}
+              <span>Export EPUB</span>
+            </button>
+            <button 
+              onClick={() => handleExport('DOCX (Standard)')}
+              disabled={hasErrors || isExporting}
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl transition-all disabled:opacity-50 flex items-center space-x-2"
+            >
+              {isExporting ? <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Download size={14} />}
+              <span>Export DOCX</span>
+            </button>
             <button 
               onClick={() => handleExport('PDF (300 DPI)')}
               disabled={hasErrors || isExporting}

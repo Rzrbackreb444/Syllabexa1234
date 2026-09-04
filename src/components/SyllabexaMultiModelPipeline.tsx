@@ -253,6 +253,10 @@ export default function SyllabexaMultiModelPipeline() {
   };
 
   const startPipeline = async () => {
+    if (subscriptionTier === 'free') {
+      addToast('Multi-Agent Waterfall requires a Pro or Agency subscription.', 'error');
+      return;
+    }
     isPausedRef.current = false;
     setState(s => ({ ...s, status: 'researching', currentChapterIndex: 0, outlineChapters: [], globalLogs: [] }));
     addLog('[Perplexity] Initiating deep web grounding & research phase...');
@@ -552,11 +556,21 @@ export default function SyllabexaMultiModelPipeline() {
               <div className="md:col-span-2 pt-4">
                 <button
                   onClick={startPipeline}
-                  className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-bold uppercase tracking-wider text-sm flex items-center justify-center gap-3 transition-all shadow-lg shadow-indigo-600/20 cursor-pointer"
+                  className={`w-full py-4 rounded-2xl font-bold uppercase tracking-wider text-sm flex items-center justify-center gap-3 transition-all cursor-pointer ${subscriptionTier === 'free' ? 'bg-slate-800 text-slate-500 border border-slate-700 hover:bg-slate-700' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20'}`}
                 >
-                  <Sparkle size={18} />
-                  Launch Chapter Waterfall Engine
-                  <ArrowRight size={18} />
+                  {subscriptionTier === 'free' ? (
+                    <>
+                      <Lock size={18} className="text-amber-500" />
+                      <span className="text-slate-400">Launch Chapter Waterfall Engine</span>
+                      <span className="text-[10px] bg-amber-500/20 text-amber-500 px-2 py-0.5 rounded border border-amber-500/30">PRO REQUIRED</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkle size={18} />
+                      Launch Chapter Waterfall Engine
+                      <ArrowRight size={18} />
+                    </>
+                  )}
                 </button>
               </div>
             </div>

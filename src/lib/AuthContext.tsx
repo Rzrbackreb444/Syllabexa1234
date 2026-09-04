@@ -7,7 +7,7 @@ interface UserProfile {
   uid: string;
   email: string | null;
   displayName: string | null;
-  activePlan: 'free' | 'pro' | 'enterprise';
+  activePlan: 'free' | 'pro' | 'agency' | 'enterprise';
   wordGoal: number;
   computeCredits?: number;
 }
@@ -79,7 +79,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribeAuth();
   }, []);
 
-  const isPro = true; // Instant full access for all signed-in users
+  const isPro = profile?.activePlan === 'pro' || profile?.activePlan === 'agency' || profile?.activePlan === 'enterprise';
 
   return (
     <AuthContext.Provider value={{ user, profile, loading, isPro }}>

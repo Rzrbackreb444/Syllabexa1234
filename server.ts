@@ -775,14 +775,26 @@ app.post("/api/syllabexa/plagiarism-check", express.json(), async (req, res) => 
 app.post("/api/syllabexa/:action", express.json({limit: '50mb'}), async (req, res) => {
   try {
     const action = req.params.action;
+    
+    let systemInstruction = "You are an expert literary agent and stylistic analyst.";
+    let promptText = `Handle action: ${action}. Payload: ${JSON.stringify(req.body)}`;
+    
+    if (action === 'train-voice') {
+      systemInstruction = "You are a master stylistic analyst and editor. You extract precise Voice Profiles from text samples. You must analyze tone, vocabulary, pacing, persona, POV, and dialogue, returning ONLY a JSON object matching this schema: { tone: string, vocabulary: string[], pacing: string, persona: string, pov: string, dialogue: string }. Use vivid, highly descriptive language.";
+      promptText = `Extract a precise stylistic voice profile from the following sample text:\n\n${req.body.sampleText}\n\nExtract the exact tone vectors, vocabulary heatmaps, pacing, persona, and dialogue style.`;
+    }
+
     const response = await safeGenerateContent(req, {
-      contents: [{ role: "user", parts: [{ text: `Handle action: ${action}. Payload: ${JSON.stringify(req.body)}` }] }],
-      config: { responseMimeType: "application/json" },
+      contents: [{ role: "user", parts: [{ text: promptText }] }],
+      config: { 
+        responseMimeType: "application/json",
+        systemInstruction: systemInstruction 
+      },
       fallback: () => {
         if (action === 'autopilot') return { premise: "A thrilling literary masterpiece.", outline: { chapters: [{ title: "Chapter 1", summary: "The beginning." }] } };
         if (action === 'art-director') return { recommendedConfig: { trimSize: "6x9", targetGenre: "TradePaperback", strictBaseline: true, fixWidowsAndOrphans: true, forceRectoChapters: true }, rationale: "Default literary layout.", fontPairing: "Garamond & Cinzel", recommendedCalloutTheme: "amber" };
         if (action === 'studio-edit') return { editedText: req.body.text + " (edited)", explanation: "Polished for literary flow.", executeAction: null };
-        if (action === 'train-voice') return { tone: "Literary and sophisticated", vocabulary: ["ephemeral", "melancholy"], pacing: "Lyrical", persona: "Author", pov: "Third-person limited", dialogue: "Sparse and profound" };
+        if (action === 'train-voice') return { tone: "Authoritative, analytical, gritty, yet deeply reflective and narrative-driven.", vocabulary: ["friction", "leverage", "relentless", "infrastructure"], pacing: "Brisk, punchy sentences interspersed with expansive reflections.", persona: "Seasoned veteran recounting hard-won victories.", pov: "First-person intimate / Direct address", dialogue: "Sparse, highly realistic, avoiding melodrama." };
         if (action === 'review-chapter') return { score: 95, issues: ["None"], suggestions: ["Keep writing"] };
         return { content: `Generated content for ${action}` };
       }
